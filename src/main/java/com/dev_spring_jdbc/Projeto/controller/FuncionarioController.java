@@ -11,11 +11,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.dev_spring_jdbc.Projeto.dao.FuncionarioDAO;
 import com.dev_spring_jdbc.Projeto.model.Funcionario;
 import com.dev_spring_jdbc.Projeto.service.FuncionarioService;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
+@CrossOrigin("*")
 @RestController
 @RequestMapping("/funcionarios")
 public class FuncionarioController {
@@ -50,8 +50,4 @@ public class FuncionarioController {
 		return service.findAll();
 	}
 	
-	@GetMapping("/hello")
-	public String hello() {
-		return "Ola mundo";
-	}
 }

@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.dev_spring_jdbc.Projeto.dao.BusinessException;
 import com.dev_spring_jdbc.Projeto.dao.FuncionarioDAO;
 import com.dev_spring_jdbc.Projeto.model.Funcionario;
 
@@ -15,6 +16,13 @@ public class FuncionarioService {
 	private FuncionarioDAO dao;
 
 	public void insertFuncionario(Funcionario funcionario) {
+		if (funcionario.getCodigo() == null) {
+
+			funcionario.setCodigo(
+					dao.buscarProximoCodigoDisponivel()
+			);
+		}
+		
 		validarCodigo(funcionario);
 		validarCpf(funcionario);
 		dao.insert(funcionario);
@@ -32,14 +40,14 @@ public class FuncionarioService {
 	private void validarCpf(Funcionario funcionario) {
 		Funcionario funcionarioExistente = dao.findByCpf(funcionario.getCpf());
 		if (funcionarioExistente != null) {
-			throw new RuntimeException("CPF já existe para outro funcionário: " + funcionario.getCpf());
+			throw new BusinessException("CPF já existe para outro funcionário: " + funcionario.getCpf());
 		}
 	}
 
 	private void validarCpfUpdate(Funcionario funcionario) {
 		Funcionario funcionarioBanco = dao.findByCpf(funcionario.getCpf());
 		if (funcionarioBanco != null && !funcionarioBanco.getCodigo().equals(funcionario.getCodigo())) {
-			throw new RuntimeException("CPF já existe para outro funcionário: " + funcionario.getCpf());
+			throw new BusinessException("CPF já existe para outro funcionário: " + funcionario.getCpf());
 		}
 	}
 
@@ -51,7 +59,7 @@ public class FuncionarioService {
 
 			if (funcionarioExistente != null) {
 
-				throw new RuntimeException("Código já existe: " + funcionario.getCodigo());
+				throw new BusinessException("Código já existe: " + funcionario.getCodigo());
 			}
 		}
 	}

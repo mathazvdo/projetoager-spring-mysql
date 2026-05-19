@@ -8,17 +8,17 @@ public class Funcionario {
 	private String nome;
 	private String cpf;
 	private String cargo;
-	private LocalDate birthDate;
+	private LocalDate dataNascimento;
 
 	public Funcionario() {
 	}
 
-	public Funcionario(Integer codigo, String nome, String cpf, String cargo, LocalDate birthDate) {
+	public Funcionario(Integer codigo, String nome, String cpf, String cargo, LocalDate dataNascimento) {
 		this.codigo = codigo;
 		this.nome = nome;
 		this.cpf = cpf;
 		this.cargo = cargo;
-		this.birthDate = birthDate;
+		this.dataNascimento = dataNascimento;
 	}
 
 	public Integer getCodigo() {
@@ -53,13 +53,18 @@ public class Funcionario {
 		this.cargo = cargo;
 	}
 
-	public LocalDate getBirthDate() {
-		return birthDate;
+	public LocalDate getDataNascimento() {
+		return dataNascimento;
 	}
 
-	public void setBirthDate(LocalDate birthDate) {
-		this.birthDate = birthDate;
+	public void setDataNascimento(LocalDate dataNascimento) {
+		this.dataNascimento = dataNascimento;
 	}
-	
-	
+
+	@Override
+	public String toString() {
+		return "Funcionario{" + "codigo=" + codigo + ", nome='" + nome + '\'' + ", cpf='" + cpf + '\'' + ", cargo='"
+				+ cargo + '\'' + ", dataNascimento=" + dataNascimento + '}';
+	}
+
 }

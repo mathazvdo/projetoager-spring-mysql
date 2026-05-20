@@ -5,8 +5,8 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.dev_spring_jdbc.Projeto.dao.BusinessException;
 import com.dev_spring_jdbc.Projeto.dao.FuncionarioDAO;
+import com.dev_spring_jdbc.Projeto.exception.BusinessException;
 import com.dev_spring_jdbc.Projeto.model.Funcionario;
 
 @Service

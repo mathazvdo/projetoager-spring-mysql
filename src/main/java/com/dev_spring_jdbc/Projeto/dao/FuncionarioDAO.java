@@ -12,198 +12,196 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import com.dev_spring_jdbc.Projeto.exception.DatabaseException;
 import com.dev_spring_jdbc.Projeto.model.Funcionario;
 
 @Repository
 public class FuncionarioDAO {
 
-	@Autowired
-	private DataSource dataSource;
+    @Autowired
+    private DataSource dataSource;
 
-	public void insert(Funcionario funcionario) {
-		StringBuilder stringBuilder = new StringBuilder();
-		boolean possuiCodigo = funcionario.getCodigo() != null;
-		
-		if (possuiCodigo) {
-			stringBuilder
-					.append("INSERT INTO funcionario ")
-					.append("(codigo, nome, cpf, cargo, dataNascimento) ")
-					.append("VALUES (?, ?, ?, ?, ?)");
-			
-		} else {
-			stringBuilder
-					.append("INSERT INTO funcionario ")
-					.append("(nome, cpf, cargo, dataNascimento) ")
-					.append("VALUES (?, ?, ?, ?)");
-		}
-		try (Connection conn = dataSource.getConnection();
-				PreparedStatement st = conn.prepareStatement(stringBuilder.toString())) {
-			int index = 1;
-			if (possuiCodigo) {
-				st.setInt(index++, funcionario.getCodigo());
-			}
-			st.setString(index++, funcionario.getNome());
-			st.setString(index++, funcionario.getCpf());
-			st.setString(index++, funcionario.getCargo());
-			st.setDate(index, java.sql.Date.valueOf(funcionario.getDataNascimento()));
+    private static final String SQL_BASE_SELECT =
+            "SELECT codigo, nome, cpf, cargo, dataNascimento FROM funcionario";
 
-			st.executeUpdate();
-		} catch (SQLException e) {
-			throw new RuntimeException("Erro ao inserir funcionário: " + e.getMessage(), e);
-		}
-	}
+    private static final String SQL_ATUALIZAR_FUNCIONARIO =
+            "UPDATE funcionario SET nome = ?, cpf = ?, cargo = ?, dataNascimento = ? WHERE codigo = ?";
 
-	public void update(Funcionario funcionario) {
-		StringBuilder stringBuilder = new StringBuilder();
-		
-		stringBuilder
-				.append("UPDATE funcionario SET nome = ?, cpf = ?, cargo = ?, dataNascimento = ? ")
-				.append("WHERE codigo = ?");
-		
-		try (Connection conn = dataSource.getConnection();
-				PreparedStatement st = conn.prepareStatement(stringBuilder.toString())) {
-			st.setString(1, funcionario.getNome());
-			st.setString(2, funcionario.getCpf());
-			st.setString(3, funcionario.getCargo());
-			st.setDate(4, java.sql.Date.valueOf(funcionario.getDataNascimento()));
-			st.setInt(5, funcionario.getCodigo());
-			st.executeUpdate();
-		} catch (Exception e) {
-			throw new RuntimeException("Erro ao atualizar funcionário: " + e.getMessage(), e);
-		}
-	}
+    private static final String SQL_DELETAR_FUNCIONARIO =
+            "DELETE FROM funcionario WHERE codigo = ?";
 
-	public void delete(Integer codigo) {
-		StringBuilder stringBuilder = new StringBuilder();
-		
-		stringBuilder
-				.append("DELETE FROM funcionario WHERE codigo = ?");
-		
-		try (Connection conn = dataSource.getConnection();
-				PreparedStatement st = conn.prepareStatement(stringBuilder.toString())) {
-			st.setInt(1, codigo);
-			st.executeUpdate();
-		} catch (SQLException e) {
-			throw new RuntimeException("Erro ao deletar funcionário: " + e.getMessage(), e);
-		}
-	}
-	
-	public Integer buscarProximoCodigoDisponivel() {
+    private static final String SQL_LISTAR_FUNCIONARIOS =
+            "SELECT codigo, nome, cpf, cargo, dataNascimento FROM funcionario";
 
-		StringBuilder stringBuilder = new StringBuilder();
+    private static final String SQL_BUSCAR_POR_CPF =
+            SQL_BASE_SELECT + " WHERE cpf = ?";
 
-		stringBuilder
-				.append("SELECT MIN(t1.codigo + 1) AS proximo ")
-				.append("FROM funcionario t1 ")
-				.append("LEFT JOIN funcionario t2 ")
-				.append("ON t1.codigo + 1 = t2.codigo ")
-				.append("WHERE t2.codigo IS NULL");
+    private static final String SQL_BUSCAR_POR_CODIGO =
+            SQL_BASE_SELECT + " WHERE codigo = ?";
 
-		try (Connection conn = dataSource.getConnection();
-				PreparedStatement st = conn.prepareStatement(stringBuilder.toString());
-				ResultSet rs = st.executeQuery()) {
+    public void insert(Funcionario funcionario) {
 
-			if (rs.next()) {
+        boolean possuiCodigo = funcionario.getCodigo() != null;
 
-				int proximoCodigo = rs.getInt("proximo");
+        StringBuilder sql = new StringBuilder();
+        sql.append("INSERT INTO funcionario (");
 
-				if (rs.wasNull()) {
-					return 1;
-				}
+        if (possuiCodigo) {
+            sql.append("codigo, ");
+        }
 
-				return proximoCodigo;
-			}
+        sql.append("nome, cpf, cargo, dataNascimento) VALUES (");
 
-		} catch (SQLException e) {
+        if (possuiCodigo) {
+            sql.append("?, ");
+        }
 
-			throw new RuntimeException(
-					"Erro ao buscar próximo código disponível: " + e.getMessage(),
-					e
-			);
-		}
+        sql.append("?, ?, ?, ?)");
 
-		return 1;
-	}
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement st = conn.prepareStatement(sql.toString())) {
 
-	public Funcionario findById(Integer codigo) {
-		StringBuilder stringBuilder = new StringBuilder();
-		
-		stringBuilder
-				.append("SELECT codigo, nome, cpf, cargo, dataNascimento ")
-				.append("FROM funcionario ")
-				.append("WHERE codigo = ?");
-		
-		try (Connection conn = dataSource.getConnection();
-				PreparedStatement st = conn.prepareStatement(stringBuilder.toString())) {
-			st.setInt(1, codigo);
-			try (ResultSet rs = st.executeQuery()) {
-				if (rs.next()) {
-					return montarFuncionario(rs);
-				} else {
-					return null;
-				}
-			}
-		} catch (SQLException e) {
-			throw new RuntimeException("Erro ao buscar funcionário por ID: " + e.getMessage(), e);
-		}
-	}
+            int i = 1;
 
-	public Funcionario findByCpf(String cpf) {
-		StringBuilder stringBuilder = new StringBuilder();
-		
-		stringBuilder
-				.append("SELECT codigo, nome, cpf, cargo, dataNascimento ")
-				.append("FROM funcionario ")
-				.append("WHERE cpf = ?");
-		
-		try (Connection conn = dataSource.getConnection();
-				PreparedStatement st = conn.prepareStatement(stringBuilder.toString())) {
-			st.setString(1, cpf);
-			
-			try (ResultSet rs = st.executeQuery()) {
-				if (rs.next()) {
-					return montarFuncionario(rs);
-				}
-			}
-		} catch (SQLException e) {
-			throw new RuntimeException("Erro ao buscar funcionário por CPF: " + e.getMessage(), e);
-		}
-		return null; 
-	}
+            if (possuiCodigo) {
+                st.setInt(i++, funcionario.getCodigo());
+            }
 
-	public List<Funcionario> findAll() {
-		List<Funcionario> funcionariosList = new ArrayList<>();
-		StringBuilder stringBuilder = new StringBuilder();
-		
-		stringBuilder
-				.append("SELECT codigo, nome, cpf, cargo, dataNascimento ")
-				.append("FROM funcionario");
-		
-		try (Connection conn = dataSource.getConnection();
-				PreparedStatement st = conn.prepareStatement(stringBuilder.toString());
-				ResultSet rs = st.executeQuery()) {
-			while (rs.next()) {
-				Funcionario funcionario = new Funcionario();
-				funcionario.setCodigo(rs.getInt("codigo"));
-				funcionario.setNome(rs.getString("nome"));
-				funcionario.setCpf(rs.getString("cpf"));
-				funcionario.setCargo(rs.getString("cargo"));
-				funcionario.setDataNascimento(rs.getDate("dataNascimento").toLocalDate());
-				funcionariosList.add(funcionario);
-			}
-		} catch (SQLException e) {
-			throw new RuntimeException("Erro ao buscar funcionários: " + e.getMessage(), e);
-		}
-		return funcionariosList;
-	}
-	
-	private Funcionario montarFuncionario(ResultSet rs) throws SQLException {
-		Funcionario funcionario = new Funcionario();
-		funcionario.setCodigo(rs.getInt("codigo"));
-		funcionario.setNome(rs.getString("nome"));
-		funcionario.setCpf(rs.getString("cpf"));
-		funcionario.setCargo(rs.getString("cargo"));
-		funcionario.setDataNascimento(rs.getDate("dataNascimento").toLocalDate());
-		return funcionario;
-	}
+            st.setString(i++, funcionario.getNome());
+            st.setString(i++, funcionario.getCpf());
+            st.setString(i++, funcionario.getCargo());
+            st.setDate(i, java.sql.Date.valueOf(funcionario.getDataNascimento()));
+
+            st.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new DatabaseException(
+                    String.format("Erro ao inserir funcionário: %s", e.getMessage()), e
+            );
+        }
+    }
+
+    public void update(Funcionario funcionario) {
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement st = conn.prepareStatement(SQL_ATUALIZAR_FUNCIONARIO)) {
+
+            int i = 1;
+
+            st.setString(i++, funcionario.getNome());
+            st.setString(i++, funcionario.getCpf());
+            st.setString(i++, funcionario.getCargo());
+            st.setDate(i++, java.sql.Date.valueOf(funcionario.getDataNascimento()));
+            st.setInt(i, funcionario.getCodigo());
+
+            st.executeUpdate();
+
+        } catch (SQLException e) {
+            throw tratarErroBanco("atualizar", e);
+        }
+    }
+
+    public void delete(Integer codigo) {
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement st = conn.prepareStatement(SQL_DELETAR_FUNCIONARIO)) {
+
+            st.setInt(1, codigo);
+            st.executeUpdate();
+
+        } catch (SQLException e) {
+            throw tratarErroBanco("deletar", e);
+        }
+    }
+
+    public Funcionario buscarPorCpf(String cpf) {
+        return buscarFuncionario(SQL_BUSCAR_POR_CPF, cpf);
+    }
+
+    public Funcionario buscarPorCodigo(Integer codigo) {
+        return buscarFuncionario(SQL_BUSCAR_POR_CODIGO, codigo);
+    }
+
+    public List<Funcionario> findAll() {
+
+        List<Funcionario> lista = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement st = conn.prepareStatement(SQL_LISTAR_FUNCIONARIOS);
+             ResultSet rs = st.executeQuery()) {
+
+            while (rs.next()) {
+                lista.add(montarFuncionario(rs));
+            }
+
+        } catch (SQLException e) {
+            throw tratarErroBanco("listar", e);
+        }
+
+        return lista;
+    }
+
+    private Funcionario buscarFuncionario(String sql, Object valor) {
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement st = conn.prepareStatement(sql)) {
+
+            st.setObject(1, valor);
+
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return montarFuncionario(rs);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw tratarErroBanco("buscar funcionário", e);
+        }
+
+        return null;
+    }
+
+    private Funcionario montarFuncionario(ResultSet rs) throws SQLException {
+
+        Funcionario funcionario = new Funcionario();
+
+        funcionario.setCodigo(rs.getInt("codigo"));
+        funcionario.setNome(rs.getString("nome"));
+        funcionario.setCpf(rs.getString("cpf"));
+        funcionario.setCargo(rs.getString("cargo"));
+        funcionario.setDataNascimento(rs.getDate("dataNascimento").toLocalDate());
+
+        return funcionario;
+    }
+
+    private DatabaseException tratarErroBanco(String operacao, Exception e) {
+        return new DatabaseException(
+                String.format("Erro ao %s funcionário: %s", operacao, e.getMessage()),
+                e
+        );
+    }
+    
+    public Integer buscarMenorCodigoDisponivel() {
+
+        String sql =
+            "SELECT MIN(t1.codigo + 1) AS proximo " +
+            "FROM funcionario t1 " +
+            "LEFT JOIN funcionario t2 ON t1.codigo + 1 = t2.codigo " +
+            "WHERE t2.codigo IS NULL";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement st = conn.prepareStatement(sql);
+             ResultSet rs = st.executeQuery()) {
+
+            if (rs.next()) {
+                int codigo = rs.getInt("proximo");
+                return rs.wasNull() ? 1 : codigo;
+            }
+
+        } catch (SQLException e) {
+            throw new DatabaseException("Erro ao buscar menor código disponível", e);
+        }
+
+        return 1;
+    }
 }
